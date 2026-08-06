@@ -42,8 +42,8 @@
 
   <script>
     // Supabase Config - YE BADALNI HAI
-    const SUPABASE_URL = "YOUR_SUPABASE_URL";
-    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Chat load
@@ -75,7 +75,7 @@
 
     // Start cycle
     async function startCycle() {
-      const res = await fetch("YOUR_MASTER_AGENT_URL", {
+      const res = await fetch("https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "start_cycle" })
