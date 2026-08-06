@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FYNTAS AI Command Center</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f2f5; }
+    h1 { color: #1a1a2e; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .chat-box { background: white; border: 1px solid #ddd; padding: 15px; height: 400px; overflow-y: scroll; margin-bottom: 20px; border-radius: 8px; }
+    .order-box { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #1a1a2e; color: white; }
+    button { background: #0070f3; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin-bottom: 15px; }
+    .msg { margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #eee; }
+    .red { color: red; }
+    .green { color: green; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 FYNTAS AI Command Center</h1>
+    <button onclick="startCycle()">🔄 Start Daily Cycle</button>
+    
+    <h2>💬 Live Agent Chat</h2>
+    <div class="chat-box" id="chatBox"></div>
+    
+    <h2>📦 Latest Orders</h2>
+    <div class="order-box">
+      <table id="orderTable">
+        <thead>
+          <tr><th>Order #</th><th>Product</th><th>Status</th><th>Tracking ID</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Supabase Config - YE BADALNI HAI
+    const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Chat load
+    async function loadChat() {
+      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(30);
+      if (data) {
+        const box = document.getElementById("chatBox");
+        box.innerHTML = data.reverse().map(m => 
+          `<div class="msg"><strong>${m.from_agent}</strong> → <strong>${m.to_agent}</strong>: ${m.content}</div>`
+        ).join("");
+      }
+    }
+
+    // Orders load
+    async function loadOrders() {
+      const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      if (data) {
+        const tbody = document.querySelector("#orderTable tbody");
+        tbody.innerHTML = data.map(o =>
+          `<tr>
+            <td>${o.order_number}</td>
+            <td>${o.product_name || '-'}</td>
+            <td>${o.order_status}</td>
+            <td>${o.tracking_id || '<span class="red">❌ Not assigned</span>'}</td>
+          </tr>`
+        ).join("");
+      }
+    }
+
+    // Start cycle
+    async function startCycle() {
+      const res = await fetch("https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start_cycle" })
+      });
+      const data = await res.json();
+      alert(data.message || "Cycle started!");
+      loadChat();
+    }
+
+    // Real-time subscription
+    supabase.channel("chat-channel")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat)
+      .subscribe();
+    supabase.channel("order-channel")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders)
+      .subscribe();
+
+    // Initial load
+    loadChat();
+    loadOrders();
+  </script>
+</body>
+</html>
