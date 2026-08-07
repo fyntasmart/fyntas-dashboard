@@ -6,48 +6,441 @@
   <title>FYNTAS AI Command Center</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { background: #1a1a2e; color: white; font-family: sans-serif; padding: 30px; }
-    button { padding: 12px 24px; font-size: 16px; margin: 10px; cursor: pointer; }
-    .response-box { background: #16213e; padding: 15px; margin-top: 15px; border-radius: 8px; white-space: pre-wrap; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+      background-size: 400% 400%;
+      animation: instaBg 10s ease infinite;
+      color: #fff;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    @keyframes instaBg {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 1px, transparent 1px),
+                  radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 2px, transparent 2px),
+                  radial-gradient(circle at 50% 80%, rgba(255,255,255,0.12) 1px, transparent 1px);
+      background-size: 50px 50px, 80px 80px, 60px 60px;
+      animation: floatParticles 20s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes floatParticles {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-50px); }
+    }
+
+    .container { 
+      max-width: 1300px; 
+      margin: 0 auto; 
+      position: relative; 
+      z-index: 1; 
+      backdrop-filter: blur(10px);
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 20px;
+      padding: 25px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    h1 { 
+      font-size: 32px; 
+      margin-bottom: 5px;
+      background: linear-gradient(to right, #fff, #fdcbf1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: glowText 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes glowText {
+      0% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+      100% { filter: drop-shadow(0 0 15px rgba(255,255,255,0.8)); }
+    }
+
+    .subtitle { color: rgba(255,255,255,0.7); margin-bottom: 20px; font-size: 14px; }
+
+    .glossy-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      border: none;
+      padding: 14px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 50px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+      transition: all 0.3s ease;
+      margin-bottom: 25px;
+      letter-spacing: 1px;
+    }
+
+    .glossy-btn::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+      transform: rotate(45deg);
+      animation: glossShine 3s ease infinite;
+    }
+
+    @keyframes glossShine {
+      0% { transform: translateX(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) rotate(45deg); }
+    }
+
+    .glossy-btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7), inset 0 1px 0 rgba(255,255,255,0.4);
+      background: linear-gradient(135deg, #764ba2, #667eea);
+    }
+
+    .glossy-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .status-bar { 
+      display: flex; 
+      gap: 15px; 
+      flex-wrap: wrap; 
+      margin-bottom: 20px; 
+    }
+
+    .status-item {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 15px;
+      padding: 15px 20px;
+      text-align: center;
+      min-width: 110px;
+      animation: fadeInUp 0.6s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .status-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    @keyframes fadeInUp {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-item .num { font-size: 28px; font-weight: bold; color: #fcb045; }
+    .status-item .label { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 3px; }
+
+    .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+    .card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 18px;
+      animation: fadeInUp 0.8s ease;
+    }
+
+    .card h2 { 
+      font-size: 18px; 
+      margin-bottom: 12px; 
+      color: #fcb045;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+      padding-bottom: 8px;
+    }
+
+    .chat-box { 
+      height: 350px; 
+      overflow-y: scroll; 
+      font-size: 13px; 
+    }
+
+    .chat-box::-webkit-scrollbar { width: 5px; }
+    .chat-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
+
+    .msg {
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border-left: 3px solid #fcb045;
+      animation: slideIn 0.4s ease;
+    }
+
+    @keyframes slideIn {
+      0% { opacity: 0; transform: translateX(-20px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+
+    .msg .from { color: #ffd700; font-weight: bold; }
+    .msg .to { color: #ff6b6b; }
+    .msg .content { color: rgba(255,255,255,0.8); margin-top: 4px; word-break: break-all; font-size: 12px; }
+
+    .approval-card {
+      background: rgba(255, 215, 0, 0.1);
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      animation: pulse 2s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 5px rgba(255,215,0,0.2); }
+      50% { box-shadow: 0 0 20px rgba(255,215,0,0.4); }
+    }
+
+    .btn-approve { background: linear-gradient(135deg, #00c853, #00e676); color: #fff; border: none; padding: 8px 18px; border-radius: 25px; cursor: pointer; font-weight: bold; margin: 5px 5px 0 0; box-shadow: 0 4px 15px rgba(0,200,83,0.4); transition: transform 0.2s; }
+    .btn-reject { background: linear-gradient(135deg, #ff1744, #ff5252); color: #fff; border: none; padding: 8px 18px; border-radius: 25px; cursor: pointer; font-weight: bold; margin: 5px 5px 0 0; box-shadow: 0 4px 15px rgba(255,23,68,0.4); transition: transform 0.2s; }
+    .btn-approve:hover, .btn-reject:hover { transform: scale(1.05); }
+    .btn-approve:active, .btn-reject:active { transform: scale(0.95); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: rgba(252, 176, 69, 0.3); color: #fff; padding: 10px; text-align: left; border-radius: 8px 8px 0 0; }
+    td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    tr { transition: background 0.3s; }
+    tr:hover { background: rgba(255,255,255,0.05); }
+    .red { color: #ff5252; }
+    .green { color: #00e676; }
+    .yellow { color: #ffd740; }
+
+    /* Assistant UI */
+    .assistant-card {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .assistant-card h2 { color: #fcb045; margin-bottom: 12px; }
+    .command-input {
+      width: 100%;
+      padding: 12px 20px;
+      border-radius: 25px;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      font-size: 14px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    .command-input::placeholder { color: rgba(255,255,255,0.5); }
+    .send-btn {
+      background: linear-gradient(135deg, #fcb045, #fd1d1d);
+      border: none;
+      color: white;
+      padding: 12px 30px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+    .send-btn:hover { transform: scale(1.02); }
+    .send-btn:active { transform: scale(0.98); }
+    .assistant-response {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 15px;
+      white-space: pre-wrap;
+      color: #ddd;
+      font-size: 13px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+      .status-bar { justify-content: center; }
+    }
   </style>
 </head>
 <body>
-  <h1>🤖 FYNTAS AI Command Center</h1>
-  
-  <!-- ⚡ पक्का बटन जो हमेशा काम करेगा -->
-  <button onclick="alert('✅ JavaScript is working perfectly!')">🧪 Test JavaScript</button>
+  <div class="container">
+    <h1>🤖 FYNTAS AI Command Center</h1>
+    <p class="subtitle">✨ All AI agents working together in real-time</p>
+    
+    <!-- AI Assistant Section -->
+    <div class="assistant-card">
+      <h2>💡 AI Assistant</h2>
+      <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products, create ad for Basmati Rice, boost sales of Wireless Earbuds)" />
+      <button class="send-btn" id="sendBtn">Send</button>
+      <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
+    </div>
 
-  <br><br>
-  <input type="text" id="commandInput" placeholder="Type command..." style="width:300px; padding:8px;">
-  <button id="sendBtn">Send to AI</button>
-  <div class="response-box" id="response">Your result will appear here...</div>
+    <button class="glossy-btn" onclick="startCycle()">⚡ Start Daily Cycle (All Agents)</button>
+    
+    <div class="status-bar" id="statusBar">
+      <div class="status-item"><div class="num" id="totalOrders">0</div><div class="label">📦 Total Orders</div></div>
+      <div class="status-item"><div class="num" id="pendingHandover">0</div><div class="label">🚚 Pending Handover</div></div>
+      <div class="status-item"><div class="num" id="pendingApprovals">0</div><div class="label">⏳ Pending Approvals</div></div>
+      <div class="status-item"><div class="num" id="todayMsgs">0</div><div class="label">💬 Today Messages</div></div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>💬 Live Agent Chat</h2>
+          <div class="chat-box" id="chatBox">Loading...</div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:20px;">
+          <h2>⏳ Pending Approvals</h2>
+          <div id="approvalBox">No pending approvals</div>
+        </div>
+        <div class="card">
+          <h2>📦 Recent Orders</h2>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Order #</th><th>Product</th><th>Status</th><th>Tracking</th></tr></thead>
+              <tbody id="orderBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
-    // असली Supabase क्रेडेंशियल (सुरक्षित)
+    // ========== CONFIG ==========
     const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
-    const ASSISTANT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
+    const MASTER_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent";
+    const ASSISTANT_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
+    // =================================
 
-    // Send फंक्शन
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- Functions ---
+    async function loadChat() {
+      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
+      if (data) {
+        document.getElementById("chatBox").innerHTML = data.reverse().map(m => 
+          `<div class="msg">
+            <span class="from">${m.from_agent}</span> → <span class="to">${m.to_agent}</span>
+            <div class="content">${m.content.substring(0, 150)}</div>
+          </div>`
+        ).join("");
+      }
+    }
+
+    async function loadOrders() {
+      const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      if (data) {
+        document.getElementById("orderBody").innerHTML = data.map(o =>
+          `<tr>
+            <td>${o.order_number}</td>
+            <td>${o.product_name || '-'}</td>
+            <td><span class="${o.order_status === 'delivered' ? 'green' : o.order_status === 'shipped' ? 'yellow' : ''}">${o.order_status}</span></td>
+            <td>${o.tracking_id || '<span class="red">Not Assigned</span>'}</td>
+          </tr>`
+        ).join("");
+        document.getElementById("totalOrders").innerText = data.length;
+        document.getElementById("pendingHandover").innerText = data.filter(o => !o.tracking_id).length;
+      }
+    }
+
+    async function loadApprovals() {
+      const { data } = await supabase.from("approvals").select("*").eq("status", "pending");
+      if (data && data.length > 0) {
+        document.getElementById("approvalBox").innerHTML = data.map(a => {
+          let content = "";
+          try { content = JSON.parse(a.content); } catch { content = a.content; }
+          return `<div class="approval-card">
+            <strong>${a.agent}</strong> - ${a.request_type}
+            <pre style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:5px;">${JSON.stringify(content, null, 2).substring(0, 200)}</pre>
+            <button class="btn-approve" onclick="approve('${a.id}')">✅ Approve</button>
+            <button class="btn-reject" onclick="reject('${a.id}')">❌ Reject</button>
+          </div>`;
+        }).join("");
+        document.getElementById("pendingApprovals").innerText = data.length;
+      } else {
+        document.getElementById("approvalBox").innerHTML = "No pending approvals";
+        document.getElementById("pendingApprovals").innerText = "0";
+      }
+    }
+
+    async function approve(id) {
+      await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
+      loadApprovals();
+    }
+    async function reject(id) {
+      await supabase.from("approvals").update({ status: "rejected" }).eq("id", id);
+      loadApprovals();
+    }
+
+    async function startCycle() {
+      const res = await fetch(MASTER_AGENT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start_cycle" })
+      });
+      const data = await res.json();
+      alert("✅ " + (data.message || "Cycle started!"));
+      setTimeout(loadChat, 1000);
+    }
+
+    async function countToday() {
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await supabase.from("messages").select("*").gte("created_at", today + "T00:00:00");
+      document.getElementById("todayMsgs").innerText = data?.length || 0;
+    }
+
+    // --- Assistant send function (same as working version) ---
     async function sendToAI() {
       const cmd = document.getElementById("commandInput").value.trim();
       if (!cmd) return;
-      document.getElementById("response").innerText = "🧠 Processing...";
+      document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
       try {
-        const res = await fetch(ASSISTANT_URL, {
+        const res = await fetch(ASSISTANT_AGENT_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ command: cmd })
         });
         const data = await res.json();
-        document.getElementById("response").innerText = JSON.stringify(data, null, 2);
+        document.getElementById("assistantResponse").innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
+        setTimeout(loadChat, 500);
+        setTimeout(loadOrders, 500);
+        setTimeout(loadApprovals, 500);
       } catch (e) {
-        document.getElementById("response").innerText = "❌ Error: " + e.message;
+        document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
       }
     }
 
-    // बटन को जोड़ें
+    // Attach event listener to Send button
     document.getElementById("sendBtn").addEventListener("click", sendToAI);
+
+    // Real-time subscriptions
+    supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
+    supabase.channel("orders-live").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
+    supabase.channel("approvals-live").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, loadApprovals).subscribe();
+
+    // Initial load
+    loadChat();
+    loadOrders();
+    loadApprovals();
+    countToday();
   </script>
 </body>
 </html>
