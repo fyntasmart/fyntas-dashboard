@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FYNTAS AI Command Center</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -79,10 +80,10 @@
     <h1>🤖 FYNTAS AI Command Center</h1>
     <p class="subtitle">✨ All AI agents working together in real-time</p>
     
-    <!-- AI Assistant Section (बिल्कुल वही जो पहले काम करता था) -->
+    <!-- AI Assistant Section -->
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
-      <input type="text" class="command-input" id="commandInput" placeholder="Type command...">
+      <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products)">
       <button class="send-btn" onclick="sendToAI()">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
@@ -121,9 +122,8 @@
     </div>
   </div>
 
-  <!-- 🔥 स्क्रिप्ट 1: असिस्टेंट (पूरी तरह अलग और सबसे पहले, कभी नहीं टूटेगा) -->
+  <!-- ========== स्क्रिप्ट 1: असिस्टेंट (पूरी तरह अलग, बिल्कुल सुरक्षित) ========== -->
   <script>
-    // पूरी तरह से आइसोलेटेड – कोई अन्य लाइब्रेरी या ग्लोबल कोड नहीं छूएगा
     (function() {
       const ASSISTANT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
 
@@ -131,6 +131,7 @@
         var cmd = document.getElementById("commandInput").value.trim();
         if (!cmd) return;
         document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
+        
         fetch(ASSISTANT_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -138,7 +139,21 @@
         })
         .then(function(response) { return response.json(); })
         .then(function(data) {
-          document.getElementById("assistantResponse").innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
+          var responseBox = document.getElementById("assistantResponse");
+          
+          // अगर ट्रेंडिंग रिज़ल्ट है तो सुंदर लिस्ट दिखाएँ
+          if (data.action === "trending" && data.results && data.results[0] && data.results[0].result && data.results[0].result.trends) {
+            var trends = data.results[0].result.trends;
+            var html = "<h3 style='color:#fcb045; margin-bottom:10px;'>🔥 Trending Products in India</h3><ul style='list-style-type:none; padding-left:0;'>";
+            for (var i = 0; i < trends.length; i++) {
+              html += "<li style='padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);'>" + trends[i].keyword + "</li>";
+            }
+            html += "</ul>";
+            responseBox.innerHTML = html;
+          } else {
+            // अन्य कमांड के लिए JSON प्रिटी
+            responseBox.innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
+          }
         })
         .catch(function(error) {
           document.getElementById("assistantResponse").innerHTML = "❌ Error: " + error.message;
@@ -147,16 +162,76 @@
     })();
   </script>
 
-  <!-- स्क्रिप्ट 2: डैशबोर्ड (Supabase + बाकी फंक्शन) – अगर इसमें भी एरर आए तो असिस्टेंट सुरक्षित है -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- ========== स्क्रिप्ट 2: डैशबोर्ड (Supabase + बाकी सब) ========== -->
   <script>
     (function() {
       try {
         const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
         const MASTER_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent";
+        
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // ---- लाइव चैट ----
+        async function loadChat() {
+          const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
+          if (data) {
+            document.getElementById("chatBox").innerHTML = data.reverse().map(m => 
+              `<div class="msg">
+                <span class="from">${m.from_agent}</span> → <span class="to">${m.to_agent}</span>
+                <div class="content">${m.content.substring(0, 150)}</div>
+              </div>`
+            ).join("");
+          }
+        }
+
+        // ---- ऑर्डर टेबल ----
+        async function loadOrders() {
+          const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+          if (data) {
+            document.getElementById("orderBody").innerHTML = data.map(o =>
+              `<tr>
+                <td>${o.order_number}</td>
+                <td>${o.product_name || '-'}</td>
+                <td><span class="${o.order_status === 'delivered' ? 'green' : o.order_status === 'shipped' ? 'yellow' : ''}">${o.order_status}</span></td>
+                <td>${o.tracking_id || '<span class="red">Not Assigned</span>'}</td>
+              </tr>`
+            ).join("");
+            document.getElementById("totalOrders").innerText = data.length;
+            document.getElementById("pendingHandover").innerText = data.filter(o => !o.tracking_id).length;
+          }
+        }
+
+        // ---- अप्रूवल कार्ड ----
+        async function loadApprovals() {
+          const { data } = await supabase.from("approvals").select("*").eq("status", "pending");
+          if (data && data.length > 0) {
+            document.getElementById("approvalBox").innerHTML = data.map(a => {
+              let content = "";
+              try { content = JSON.parse(a.content); } catch { content = a.content; }
+              return `<div class="approval-card">
+                <strong>${a.agent}</strong> - ${a.request_type}
+                <pre style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:5px;">${JSON.stringify(content, null, 2).substring(0, 200)}</pre>
+                <button class="btn-approve" onclick="approve('${a.id}')">✅ Approve</button>
+                <button class="btn-reject" onclick="reject('${a.id}')">❌ Reject</button>
+              </div>`;
+            }).join("");
+            document.getElementById("pendingApprovals").innerText = data.length;
+          } else {
+            document.getElementById("approvalBox").innerHTML = "No pending approvals";
+            document.getElementById("pendingApprovals").innerText = "0";
+          }
+        }
+
+        // ---- ग्लोबल फंक्शन्स (onclick के लिए) ----
+        window.approve = async function(id) {
+          await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
+          loadApprovals();
+        };
+        window.reject = async function(id) {
+          await supabase.from("approvals").update({ status: "rejected" }).eq("id", id);
+          loadApprovals();
+        };
         window.startCycle = function() {
           fetch(MASTER_AGENT_URL, {
             method: "POST",
@@ -164,14 +239,34 @@
             body: JSON.stringify({ action: "start_cycle" })
           })
           .then(res => res.json())
-          .then(data => alert("✅ " + (data.message || "Cycle started!")))
+          .then(data => {
+            alert("✅ " + (data.message || "Cycle started!"));
+            loadChat();  // टास्क बनने के बाद चैट अपडेट
+          })
           .catch(err => alert("❌ Error: " + err.message));
         };
 
-        // बाकी लोडिंग को यहाँ जोड़ सकते हैं, लेकिन असिस्टेंट के लिए ज़रूरी नहीं
-        console.log("Dashboard functions loaded (assistant already safe).");
+        // ---- टुडे मैसेज काउंट ----
+        async function countToday() {
+          const today = new Date().toISOString().split("T")[0];
+          const { data } = await supabase.from("messages").select("*").gte("created_at", today + "T00:00:00");
+          document.getElementById("todayMsgs").innerText = data?.length || 0;
+        }
+
+        // ---- रियल-टाइम सब्सक्रिप्शन ----
+        supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
+        supabase.channel("orders-live").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
+        supabase.channel("approvals-live").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, loadApprovals).subscribe();
+
+        // ---- इनिशियल लोड ----
+        loadChat();
+        loadOrders();
+        loadApprovals();
+        countToday();
+
+        console.log("✅ Full dashboard loaded – Assistant is independent.");
       } catch(e) {
-        console.error("Dashboard script error (assistant unaffected):", e);
+        console.error("Dashboard script error (Assistant unaffected):", e);
       }
     })();
   </script>
