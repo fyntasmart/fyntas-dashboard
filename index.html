@@ -80,10 +80,10 @@
     <h1>🤖 FYNTAS AI Command Center</h1>
     <p class="subtitle">✨ All AI agents working together in real-time</p>
     
+    <!-- AI Assistant Section (वही जो काम कर रहा है) -->
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
       <input type="text" class="command-input" id="commandInput" placeholder="Type command...">
-      <!-- बटन onclick के साथ, ग्लोबल sendToAI को बुलाएगा -->
       <button class="send-btn" onclick="sendToAI()">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
@@ -123,11 +123,9 @@
   </div>
 
   <script>
-    // ====================  ग्लोबल असिस्टेंट (सबसे पहले, बिल्कुल अलग) ====================
+    // ========== असिस्टेंट (बिल्कुल अलग, पहले से काम करता हुआ) ==========
     const ASSISTANT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
-
     function sendToAI() {
-      console.log("sendToAI called");  // कंसोल में देखने के लिए
       var cmd = document.getElementById("commandInput").value.trim();
       if (!cmd) return;
       document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
@@ -145,11 +143,96 @@
       });
     }
 
-    // ====================  बाकी डैशबोर्ड फंक्शन (अगर चाहें तो बाद में जोड़ें) ====================
-    // (अभी सिर्फ खाली जगह है, बाद में Supabase वाले फंक्शन जोड़ सकते हैं)
-    function startCycle() {
-      alert("⚡ Daily cycle feature will be added after Assistant is working.");
+    // ========== डैशबोर्ड (Supabase फंक्शन्स) ==========
+    const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
+    const MASTER_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function loadChat() {
+      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
+      if (data) {
+        document.getElementById("chatBox").innerHTML = data.reverse().map(m => 
+          `<div class="msg">
+            <span class="from">${m.from_agent}</span> → <span class="to">${m.to_agent}</span>
+            <div class="content">${m.content.substring(0, 150)}</div>
+          </div>`
+        ).join("");
+      }
     }
+
+    async function loadOrders() {
+      const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      if (data) {
+        document.getElementById("orderBody").innerHTML = data.map(o =>
+          `<tr>
+            <td>${o.order_number}</td>
+            <td>${o.product_name || '-'}</td>
+            <td><span class="${o.order_status === 'delivered' ? 'green' : o.order_status === 'shipped' ? 'yellow' : ''}">${o.order_status}</span></td>
+            <td>${o.tracking_id || '<span class="red">Not Assigned</span>'}</td>
+          </tr>`
+        ).join("");
+        document.getElementById("totalOrders").innerText = data.length;
+        document.getElementById("pendingHandover").innerText = data.filter(o => !o.tracking_id).length;
+      }
+    }
+
+    async function loadApprovals() {
+      const { data } = await supabase.from("approvals").select("*").eq("status", "pending");
+      if (data && data.length > 0) {
+        document.getElementById("approvalBox").innerHTML = data.map(a => {
+          let content = "";
+          try { content = JSON.parse(a.content); } catch { content = a.content; }
+          return `<div class="approval-card">
+            <strong>${a.agent}</strong> - ${a.request_type}
+            <pre style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:5px;">${JSON.stringify(content, null, 2).substring(0, 200)}</pre>
+            <button class="btn-approve" onclick="approve('${a.id}')">✅ Approve</button>
+            <button class="btn-reject" onclick="reject('${a.id}')">❌ Reject</button>
+          </div>`;
+        }).join("");
+        document.getElementById("pendingApprovals").innerText = data.length;
+      } else {
+        document.getElementById("approvalBox").innerHTML = "No pending approvals";
+        document.getElementById("pendingApprovals").innerText = "0";
+      }
+    }
+
+    async function approve(id) {
+      await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
+      loadApprovals();
+    }
+    async function reject(id) {
+      await supabase.from("approvals").update({ status: "rejected" }).eq("id", id);
+      loadApprovals();
+    }
+
+    async function startCycle() {
+      const res = await fetch(MASTER_AGENT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start_cycle" })
+      });
+      const data = await res.json();
+      alert("✅ " + (data.message || "Cycle started!"));
+      loadChat();
+    }
+
+    async function countToday() {
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await supabase.from("messages").select("*").gte("created_at", today + "T00:00:00");
+      document.getElementById("todayMsgs").innerText = data?.length || 0;
+    }
+
+    // रियल-टाइम सब्सक्रिप्शन
+    supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
+    supabase.channel("orders-live").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
+    supabase.channel("approvals-live").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, loadApprovals).subscribe();
+
+    // प्रारंभिक लोड
+    loadChat();
+    loadOrders();
+    loadApprovals();
+    countToday();
   </script>
 </body>
 </html>
