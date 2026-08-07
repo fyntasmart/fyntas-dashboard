@@ -284,8 +284,7 @@
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
       <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products, create ad for Basmati Rice, boost sales of Wireless Earbuds)" />
-      <!-- 🔥 अब बटन के onclick में सीधे असली URL है, कोई variable नहीं -->
-      <button class="send-btn" onclick="(async function(){ const cmd=document.getElementById('commandInput').value.trim(); if(!cmd) return; document.getElementById('assistantResponse').innerHTML='🧠 Processing...'; try { const res=await fetch('https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:cmd})}); const data=await res.json(); document.getElementById('assistantResponse').innerHTML='<pre style=\'white-space:pre-wrap; color:#ccc;\'>'+JSON.stringify(data,null,2)+'</pre>'; setTimeout(loadChat,500); setTimeout(loadOrders,500); setTimeout(loadApprovals,500); } catch(e) { document.getElementById('assistantResponse').innerHTML='❌ Error: '+e.message; } })()">Send</button>
+      <button class="send-btn" onclick="sendAssistantCommand()">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
 
@@ -328,12 +327,12 @@
     const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
     const MASTER_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent";
-    // Assistant URL अब inline है, इसलिए यहाँ ज़रूरी नहीं, लेकिन रख सकते हैं
+    const ASSISTANT_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
     // =================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Load chat messages
+    // ------------------ Existing functions ------------------
     async function loadChat() {
       const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
       if (data) {
@@ -346,7 +345,6 @@
       }
     }
 
-    // Load orders
     async function loadOrders() {
       const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
       if (data) {
@@ -363,7 +361,6 @@
       }
     }
 
-    // Load approvals
     async function loadApprovals() {
       const { data } = await supabase.from("approvals").select("*").eq("status", "pending");
       if (data && data.length > 0) {
@@ -408,6 +405,28 @@
       const today = new Date().toISOString().split("T")[0];
       const { data } = await supabase.from("messages").select("*").gte("created_at", today + "T00:00:00");
       document.getElementById("todayMsgs").innerText = data?.length || 0;
+    }
+
+    // ------------------ Assistant command (safe & global) ------------------
+    async function sendAssistantCommand() {
+      const cmd = document.getElementById("commandInput").value.trim();
+      if (!cmd) return;
+      document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
+      try {
+        const res = await fetch(ASSISTANT_AGENT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command: cmd })
+        });
+        const data = await res.json();
+        document.getElementById("assistantResponse").innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
+        // Refresh other sections
+        setTimeout(loadChat, 500);
+        setTimeout(loadOrders, 500);
+        setTimeout(loadApprovals, 500);
+      } catch (e) {
+        document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
+      }
     }
 
     // Real-time subscriptions
