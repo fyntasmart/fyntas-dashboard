@@ -6,68 +6,48 @@
   <title>FYNTAS AI Command Center</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* पूरा स्टाइल वैसा ही है – जगह बचाने के लिए यहाँ नहीं लिख रहा, लेकिन आपके पिछले कोड में जो स्टाइल था वह सब रखें। */
-    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
-    button { padding: 10px 20px; margin: 10px; cursor: pointer; }
-    .assistant-response { background: #222; padding: 10px; margin-top: 10px; }
+    body { background: #1a1a2e; color: white; font-family: sans-serif; padding: 30px; }
+    button { padding: 12px 24px; font-size: 16px; margin: 10px; cursor: pointer; }
+    .response-box { background: #16213e; padding: 15px; margin-top: 15px; border-radius: 8px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🤖 FYNTAS AI Command Center</h1>
-    <p>✨ All AI agents working together in real-time</p>
-    
-    <!-- 🧪 Test Button -->
-    <button onclick="alert('✅ JavaScript is working!')">🧪 Test JavaScript</button>
+  <h1>🤖 FYNTAS AI Command Center</h1>
+  
+  <!-- ⚡ पक्का बटन जो हमेशा काम करेगा -->
+  <button onclick="alert('✅ JavaScript is working perfectly!')">🧪 Test JavaScript</button>
 
-    <!-- AI Assistant -->
-    <div>
-      <h2>💡 AI Assistant</h2>
-      <input type="text" id="commandInput" placeholder="Type command..." style="width:100%; padding:10px;" />
-      <button id="sendBtn">Send</button>
-      <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
-    </div>
-
-    <button onclick="startCycle()">⚡ Start Daily Cycle</button>
-    <div id="chatBox">Live Chat...</div>
-    <div id="orderBody">No orders</div>
-    <div id="approvalBox">No approvals</div>
-  </div>
+  <br><br>
+  <input type="text" id="commandInput" placeholder="Type command..." style="width:300px; padding:8px;">
+  <button id="sendBtn">Send to AI</button>
+  <div class="response-box" id="response">Your result will appear here...</div>
 
   <script>
-    // ========== CONFIG ==========
+    // असली Supabase क्रेडेंशियल (सुरक्षित)
     const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
-    const MASTER_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent";
-    const ASSISTANT_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
+    const ASSISTANT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    async function startCycle() {
-      const res = await fetch(MASTER_AGENT_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({action:"start_cycle"}) });
-      alert("✅ " + (await res.json()).message);
-    }
-
-    // --- Assistant send function ---
-    async function sendAssistantCommand() {
+    // Send फंक्शन
+    async function sendToAI() {
       const cmd = document.getElementById("commandInput").value.trim();
       if (!cmd) return;
-      document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
+      document.getElementById("response").innerText = "🧠 Processing...";
       try {
-        const res = await fetch(ASSISTANT_AGENT_URL, {
+        const res = await fetch(ASSISTANT_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ command: cmd })
         });
         const data = await res.json();
-        document.getElementById("assistantResponse").innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+        document.getElementById("response").innerText = JSON.stringify(data, null, 2);
       } catch (e) {
-        document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
+        document.getElementById("response").innerText = "❌ Error: " + e.message;
       }
     }
 
-    // Attach event to Send button
-    document.getElementById("sendBtn").addEventListener("click", sendAssistantCommand);
+    // बटन को जोड़ें
+    document.getElementById("sendBtn").addEventListener("click", sendToAI);
   </script>
 </body>
 </html>
