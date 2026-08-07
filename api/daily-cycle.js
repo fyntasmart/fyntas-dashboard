@@ -1,270 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FYNTAS AI Command Center</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    /* ========== सारा स्टाइल ========== */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
-      background-size: 400% 400%;
-      animation: instaBg 10s ease infinite;
-      color: #fff;
-      padding: 20px;
-      position: relative;
-      overflow-x: hidden;
+// api/daily-cycle.js
+export default async function handler(req, res) {
+  // केवल POST अनुरोध स्वीकार करें (Cron Job भी POST भेजता है)
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Only POST allowed' });
+  }
+
+  try {
+    const masterUrl = process.env.MASTER_AGENT_URL;
+    const orchestratorUrl = process.env.ORCHESTRATOR_URL;
+
+    if (!masterUrl || !orchestratorUrl) {
+      return res.status(500).json({
+        error: 'Environment variables MASTER_AGENT_URL and ORCHESTRATOR_URL must be set',
+      });
     }
-    @keyframes instaBg {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 1px, transparent 1px),
-                  radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 2px, transparent 2px),
-                  radial-gradient(circle at 50% 80%, rgba(255,255,255,0.12) 1px, transparent 1px);
-      background-size: 50px 50px, 80px 80px, 60px 60px;
-      animation: floatParticles 20s linear infinite;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .container { 
-      max-width: 1300px; 
-      margin: 0 auto; 
-      position: relative; 
-      z-index: 1; 
-      backdrop-filter: blur(10px);
-      background: rgba(0, 0, 0, 0.4);
-      border-radius: 20px;
-      padding: 25px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    h1 { font-size: 32px; margin-bottom: 5px; }
-    .subtitle { color: rgba(255,255,255,0.7); margin-bottom: 20px; font-size: 14px; }
-    .glossy-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; padding: 14px 30px; font-size: 16px; font-weight: bold; border-radius: 50px; cursor: pointer; margin-bottom: 25px; }
-    .status-bar { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
-    .status-item { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 15px; padding: 15px 20px; text-align: center; min-width: 110px; }
-    .status-item .num { font-size: 28px; font-weight: bold; color: #fcb045; }
-    .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-    .card { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 18px; }
-    .chat-box { height: 350px; overflow-y: scroll; font-size: 13px; }
-    .msg { padding: 8px 10px; margin-bottom: 6px; border-radius: 10px; background: rgba(255,255,255,0.06); border-left: 3px solid #fcb045; }
-    .msg .from { color: #ffd700; font-weight: bold; }
-    .msg .to { color: #ff6b6b; }
-    .msg .content { color: rgba(255,255,255,0.8); margin-top: 4px; word-break: break-all; font-size: 12px; }
-    .approval-card { background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.4); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-    .btn-approve { background: linear-gradient(135deg, #00c853, #00e676); color: #fff; border: none; padding: 8px 18px; border-radius: 25px; cursor: pointer; font-weight: bold; margin: 5px 5px 0 0; }
-    .btn-reject { background: linear-gradient(135deg, #ff1744, #ff5252); color: #fff; border: none; padding: 8px 18px; border-radius: 25px; cursor: pointer; font-weight: bold; margin: 5px 5px 0 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: rgba(252, 176, 69, 0.3); color: #fff; padding: 10px; text-align: left; }
-    td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .red { color: #ff5252; }
-    .green { color: #00e676; }
-    .yellow { color: #ffd740; }
-    .assistant-card { background: rgba(255,255,255,0.12); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.25); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-    .command-input { width: 100%; padding: 12px 20px; border-radius: 25px; border: none; background: rgba(255,255,255,0.15); color: white; font-size: 14px; margin-bottom: 12px; outline: none; }
-    .send-btn { background: linear-gradient(135deg, #fcb045, #fd1d1d); border: none; color: white; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; }
-    .assistant-response { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 15px; margin-top: 15px; white-space: pre-wrap; color: #ddd; font-size: 13px; max-height: 300px; overflow-y: auto; }
-    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>🤖 FYNTAS AI Command Center</h1>
-    <p class="subtitle">✨ All AI agents working together in real-time</p>
-    
-    <div class="assistant-card">
-      <h2>💡 AI Assistant</h2>
-      <input type="text" class="command-input" id="commandInput" placeholder="Type command...">
-      <button class="send-btn" id="sendBtn">Send</button>
-      <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
-    </div>
 
-    <button class="glossy-btn" id="startCycleBtn">⚡ Start Daily Cycle</button>
-    
-    <div class="status-bar">
-      <div class="status-item"><div class="num" id="totalOrders">0</div><div class="label">📦 Total Orders</div></div>
-      <div class="status-item"><div class="num" id="pendingHandover">0</div><div class="label">🚚 Pending Handover</div></div>
-      <div class="status-item"><div class="num" id="pendingApprovals">0</div><div class="label">⏳ Pending Approvals</div></div>
-      <div class="status-item"><div class="num" id="todayMsgs">0</div><div class="label">💬 Today Messages</div></div>
-    </div>
+    // 1. Master Agent को टास्क भेजें
+    const masterRes = await fetch(masterUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'start_cycle' }),
+    });
+    const masterData = await masterRes.json();
 
-    <div class="grid">
-      <div>
-        <div class="card">
-          <h2>💬 Live Agent Chat</h2>
-          <div class="chat-box" id="chatBox">Loading...</div>
-        </div>
-      </div>
-      <div>
-        <div class="card" style="margin-bottom:20px;">
-          <h2>⏳ Pending Approvals</h2>
-          <div id="approvalBox">No pending approvals</div>
-        </div>
-        <div class="card">
-          <h2>📦 Recent Orders</h2>
-          <div style="overflow-x:auto;">
-            <table>
-              <thead><tr><th>Order #</th><th>Product</th><th>Status</th><th>Tracking</th></tr></thead>
-              <tbody id="orderBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+    // 2. थोड़ा इंतज़ार करें ताकि टास्क पूरी तरह बन जाएँ (3 सेकंड)
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
-  <script>
-    // ========== स्क्रिप्ट शुरू ==========
-    console.log("Script started...");
+    // 3. Orchestrator को चलाएँ (सभी एजेंट्स को ट्रिगर करेगा)
+    const orchRes = await fetch(orchestratorUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const orchData = await orchRes.json();
 
-    // अगर कोई एरर पूरी स्क्रिप्ट में आए, तो alert दिखाओ
-    window.onerror = function(msg, url, line) {
-      alert("JS Error: " + msg + "\nLine: " + line);
-      return true;
-    };
-
-    // पूरा कोड try-catch में, ताकि हमें पता चले कि कोई एरर तो नहीं
-    try {
-      console.log("Inside try block");
-
-      const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
-      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
-      const MASTER_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent";
-      const ASSISTANT_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
-
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log("Supabase initialized");
-
-      // ---- डैशबोर्ड फंक्शंस ----
-      async function loadChat() {
-        const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
-        if (data) {
-          document.getElementById("chatBox").innerHTML = data.reverse().map(m => 
-            `<div class="msg">
-              <span class="from">${m.from_agent}</span> → <span class="to">${m.to_agent}</span>
-              <div class="content">${m.content.substring(0, 150)}</div>
-            </div>`
-          ).join("");
-        }
-      }
-
-      async function loadOrders() {
-        const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-        if (data) {
-          document.getElementById("orderBody").innerHTML = data.map(o =>
-            `<tr>
-              <td>${o.order_number}</td>
-              <td>${o.product_name || '-'}</td>
-              <td><span class="${o.order_status === 'delivered' ? 'green' : o.order_status === 'shipped' ? 'yellow' : ''}">${o.order_status}</span></td>
-              <td>${o.tracking_id || '<span class="red">Not Assigned</span>'}</td>
-            </tr>`
-          ).join("");
-          document.getElementById("totalOrders").innerText = data.length;
-          document.getElementById("pendingHandover").innerText = data.filter(o => !o.tracking_id).length;
-        }
-      }
-
-      async function loadApprovals() {
-        const { data } = await supabase.from("approvals").select("*").eq("status", "pending");
-        if (data && data.length > 0) {
-          document.getElementById("approvalBox").innerHTML = data.map(a => {
-            let content = "";
-            try { content = JSON.parse(a.content); } catch { content = a.content; }
-            return `<div class="approval-card">
-              <strong>${a.agent}</strong> - ${a.request_type}
-              <pre style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:5px;">${JSON.stringify(content, null, 2).substring(0, 200)}</pre>
-              <button class="btn-approve" onclick="approve('${a.id}')">✅ Approve</button>
-              <button class="btn-reject" onclick="reject('${a.id}')">❌ Reject</button>
-            </div>`;
-          }).join("");
-          document.getElementById("pendingApprovals").innerText = data.length;
-        } else {
-          document.getElementById("approvalBox").innerHTML = "No pending approvals";
-          document.getElementById("pendingApprovals").innerText = "0";
-        }
-      }
-
-      // ग्लोबल approve/reject (onclick में कॉल करने के लिए)
-      window.approve = async function(id) {
-        await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
-        loadApprovals();
-      };
-      window.reject = async function(id) {
-        await supabase.from("approvals").update({ status: "rejected" }).eq("id", id);
-        loadApprovals();
-      };
-
-      // स्टार्ट साइकल
-      window.startCycle = async function() {
-        const res = await fetch(MASTER_AGENT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "start_cycle" })
-        });
-        const data = await res.json();
-        alert("✅ " + (data.message || "Cycle started!"));
-        loadChat();
-      };
-
-      // ---- असिस्टेंट फंक्शन (ग्लोबल) ----
-      window.sendToAI = async function() {
-        console.log("sendToAI called");
-        const cmd = document.getElementById("commandInput").value.trim();
-        if (!cmd) return;
-        document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
-        try {
-          const res = await fetch(ASSISTANT_AGENT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ command: cmd })
-          });
-          const data = await res.json();
-          document.getElementById("assistantResponse").innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
-          setTimeout(loadChat, 500);
-          setTimeout(loadOrders, 500);
-          setTimeout(loadApprovals, 500);
-        } catch (e) {
-          document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
-        }
-      };
-
-      // बटन इवेंट अटैच करना (onclick के बजाय, लेकिन सेफ्टी के लिए)
-      document.getElementById("sendBtn").addEventListener("click", window.sendToAI);
-      console.log("Event listener attached");
-
-      // रियल-टाइम सब्सक्रिप्शन
-      supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
-      supabase.channel("orders-live").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
-      supabase.channel("approvals-live").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, loadApprovals).subscribe();
-
-      // इनिशियल लोड
-      loadChat();
-      loadOrders();
-      loadApprovals();
-
-      // टुडे मैसेज
-      async function countToday() {
-        const today = new Date().toISOString().split("T")[0];
-        const { data } = await supabase.from("messages").select("*").gte("created_at", today + "T00:00:00");
-        document.getElementById("todayMsgs").innerText = data?.length || 0;
-      }
-      countToday();
-
-      console.log("All functions loaded successfully!");
-
-    } catch (err) {
-      alert("FATAL SCRIPT ERROR: " + err.message);
-      console.error(err);
-    }
-  </script>
-</body>
-</html>
+    // सफलता का जवाब
+    return res.status(200).json({
+      message: 'Daily cycle completed',
+      master: masterData,
+      orchestrator: orchData,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message || 'Internal Server Error',
+    });
+  }
+}
