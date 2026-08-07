@@ -261,7 +261,7 @@
           .then(res => res.json())
           .then(data => {
             alert("✅ " + (data.message || "Cycle started!"));
-            loadChat();  // टास्क बनने के बाद चैट अपडेट
+            loadChat();
           })
           .catch(err => alert("❌ Error: " + err.message));
         };
