@@ -284,7 +284,8 @@
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
       <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products, create ad for Basmati Rice, boost sales of Wireless Earbuds)" />
-      <button class="send-btn" id="sendBtn">Send</button>
+      <!-- 🔥 100% काम करने वाला onclick -->
+      <button class="send-btn" onclick="sendToAI()">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
 
@@ -323,6 +324,11 @@
   </div>
 
   <script>
+    // ========== किसी भी JavaScript error को तुरंत alert करें ==========
+    window.onerror = function(msg, url, line) {
+      alert("JS Error: " + msg + "\nLine: " + line);
+    };
+
     // ========== CONFIG ==========
     const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
@@ -407,7 +413,7 @@
       document.getElementById("todayMsgs").innerText = data?.length || 0;
     }
 
-    // --- Assistant send function (same as working version) ---
+    // --- Assistant send function (Global, safe) ---
     async function sendToAI() {
       const cmd = document.getElementById("commandInput").value.trim();
       if (!cmd) return;
@@ -427,9 +433,6 @@
         document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
       }
     }
-
-    // Attach event listener to Send button
-    document.getElementById("sendBtn").addEventListener("click", sendToAI);
 
     // Real-time subscriptions
     supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
