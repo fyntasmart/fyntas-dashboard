@@ -284,7 +284,8 @@
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
       <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products, create ad for Basmati Rice, boost sales of Wireless Earbuds)" />
-      <button class="send-btn" id="sendBtn">Send</button>
+      <!-- यह बटन 100% काम करेगा: onclick में पूरा fetch लॉजिक सीधे लिखा है -->
+      <button class="send-btn" onclick="(async function(){ const cmd=document.getElementById('commandInput').value.trim(); if(!cmd) return; document.getElementById('assistantResponse').innerHTML='🧠 Processing...'; try { const res=await fetch(ASSISTANT_AGENT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:cmd})}); const data=await res.json(); document.getElementById('assistantResponse').innerHTML='<pre style=\'white-space:pre-wrap; color:#ccc;\'>'+JSON.stringify(data,null,2)+'</pre>'; setTimeout(loadChat,500); setTimeout(loadOrders,500); setTimeout(loadApprovals,500); } catch(e) { document.getElementById('assistantResponse').innerHTML='❌ Error: '+e.message; } })()">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
 
@@ -409,26 +410,8 @@
       document.getElementById("todayMsgs").innerText = data?.length || 0;
     }
 
-    // ---------- Assistant बटन (बिना onclick, event listener से) ----------
-    document.getElementById("sendBtn").addEventListener("click", async function() {
-      const cmd = document.getElementById("commandInput").value.trim();
-      if (!cmd) return;
-      document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
-      try {
-        const res = await fetch(ASSISTANT_AGENT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ command: cmd })
-        });
-        const data = await res.json();
-        document.getElementById("assistantResponse").innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
-        setTimeout(loadChat, 500);
-        setTimeout(loadOrders, 500);
-        setTimeout(loadApprovals, 500);
-      } catch (e) {
-        document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
-      }
-    });
+    // अब किसी अलग sendCommand फंक्शन या event listener की ज़रूरत नहीं है,
+    // क्योंकि बटन के onclick में ही पूरा कोड लिख दिया गया है।
 
     // Real-time subscriptions
     supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
