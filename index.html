@@ -280,11 +280,14 @@
     <h1>🤖 FYNTAS AI Command Center</h1>
     <p class="subtitle">✨ All AI agents working together in real-time</p>
     
+    <!-- 🔥 JavaScript Test Button -->
+    <button class="glossy-btn" onclick="alert('✅ JavaScript is working!')">🧪 Test JavaScript</button>
+
     <!-- AI Assistant Section -->
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
       <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products, create ad for Basmati Rice, boost sales of Wireless Earbuds)" />
-      <button class="send-btn" onclick="sendAssistantCommand()">Send</button>
+      <button class="send-btn" id="sendBtn">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
 
@@ -332,7 +335,7 @@
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ------------------ Existing functions ------------------
+    // --- Functions ---
     async function loadChat() {
       const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
       if (data) {
@@ -407,7 +410,7 @@
       document.getElementById("todayMsgs").innerText = data?.length || 0;
     }
 
-    // ------------------ Assistant command (safe & global) ------------------
+    // --- Assistant send function (safe & global) ---
     async function sendAssistantCommand() {
       const cmd = document.getElementById("commandInput").value.trim();
       if (!cmd) return;
@@ -420,7 +423,6 @@
         });
         const data = await res.json();
         document.getElementById("assistantResponse").innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
-        // Refresh other sections
         setTimeout(loadChat, 500);
         setTimeout(loadOrders, 500);
         setTimeout(loadApprovals, 500);
@@ -428,6 +430,9 @@
         document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
       }
     }
+
+    // Attach event listener to Send button
+    document.getElementById("sendBtn").addEventListener("click", sendAssistantCommand);
 
     // Real-time subscriptions
     supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
