@@ -122,7 +122,7 @@
     </div>
   </div>
 
-  <!-- ========== स्क्रिप्ट 1: असिस्टेंट (पूरी तरह अलग, बिल्कुल सुरक्षित) ========== -->
+  <!-- ========== स्क्रिप्ट 1: असिस्टेंट (सभी कमांड को सही पहचानेगा और सुंदर दिखाएगा) ========== -->
   <script>
     (function() {
       const ASSISTANT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
@@ -141,7 +141,7 @@
         .then(function(data) {
           var responseBox = document.getElementById("assistantResponse");
           
-          // अगर ट्रेंडिंग रिज़ल्ट है तो सुंदर लिस्ट दिखाएँ
+          // 1. Trending
           if (data.action === "trending" && data.results && data.results[0] && data.results[0].result && data.results[0].result.trends) {
             var trends = data.results[0].result.trends;
             var html = "<h3 style='color:#fcb045; margin-bottom:10px;'>🔥 Trending Products in India</h3><ul style='list-style-type:none; padding-left:0;'>";
@@ -150,8 +150,28 @@
             }
             html += "</ul>";
             responseBox.innerHTML = html;
-          } else {
-            // अन्य कमांड के लिए JSON प्रिटी
+          }
+          // 2. Ad Creative
+          else if (data.action === "create_ad" && data.results && data.results[0] && data.results[0].result && data.results[0].result.creatives) {
+            var c = data.results[0].result.creatives;
+            responseBox.innerHTML = `<h3 style='color:#fcb045;'>📢 Ad Creative for ${data.product || 'Product'}</h3>
+              <p><strong>Google Ads Headlines:</strong><br>${(c.google_ads?.headlines||[]).join('<br>')}</p>
+              <p><strong>Descriptions:</strong><br>${(c.google_ads?.descriptions||[]).join('<br>')}</p>
+              <p><strong>Facebook Ad:</strong><br>${c.facebook_ad||''}</p>
+              <p><strong>Instagram Caption:</strong><br>${c.instagram_caption||''}</p>
+              <p><strong>Hashtags:</strong> ${(c.hashtags||[]).join(', ')}</p>`;
+          }
+          // 3. Social Post
+          else if (data.action === "social_post" && data.results && data.results[0] && data.results[0].result && data.results[0].result.post) {
+            var p = data.results[0].result.post;
+            responseBox.innerHTML = `<h3 style='color:#fcb045;'>📱 Social Media Post for ${data.product||'Product'}</h3>
+              <p><strong>Instagram Caption:</strong><br>${p.instagram_caption||''}</p>
+              <p><strong>Hashtags:</strong> ${(p.hashtags||[]).join(', ')}</p>
+              <p><strong>Facebook Post:</strong><br>${p.facebook_post||''}</p>
+              <p><strong>Best Posting Time:</strong> ${p.best_posting_time||''}</p>`;
+          }
+          // 4. Default (any other action, show JSON)
+          else {
             responseBox.innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
           }
         })
