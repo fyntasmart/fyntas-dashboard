@@ -20,14 +20,12 @@
       overflow-x: hidden;
     }
 
-    /* Instagram gradient animation */
     @keyframes instaBg {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
 
-    /* Floating particles */
     body::before {
       content: '';
       position: fixed;
@@ -74,7 +72,6 @@
 
     .subtitle { color: rgba(255,255,255,0.7); margin-bottom: 20px; font-size: 14px; }
 
-    /* Glossy Button */
     .glossy-btn {
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: #fff;
@@ -119,7 +116,6 @@
       transform: translateY(0) scale(0.98);
     }
 
-    /* Status Bar */
     .status-bar { 
       display: flex; 
       gap: 15px; 
@@ -152,10 +148,8 @@
     .status-item .num { font-size: 28px; font-weight: bold; color: #fcb045; }
     .status-item .label { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 3px; }
 
-    /* Grid */
     .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
 
-    /* Cards */
     .card {
       background: rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(15px);
@@ -173,7 +167,6 @@
       padding-bottom: 8px;
     }
 
-    /* Chat */
     .chat-box { 
       height: 350px; 
       overflow-y: scroll; 
@@ -201,7 +194,6 @@
     .msg .to { color: #ff6b6b; }
     .msg .content { color: rgba(255,255,255,0.8); margin-top: 4px; word-break: break-all; font-size: 12px; }
 
-    /* Approval Card */
     .approval-card {
       background: rgba(255, 215, 0, 0.1);
       border: 1px solid rgba(255, 215, 0, 0.4);
@@ -221,7 +213,6 @@
     .btn-approve:hover, .btn-reject:hover { transform: scale(1.05); }
     .btn-approve:active, .btn-reject:active { transform: scale(0.95); }
 
-    /* Table */
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { background: rgba(252, 176, 69, 0.3); color: #fff; padding: 10px; text-align: left; border-radius: 8px 8px 0 0; }
     td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
@@ -231,7 +222,7 @@
     .green { color: #00e676; }
     .yellow { color: #ffd740; }
 
-    /* --- Assistant UI --- */
+    /* Assistant UI */
     .assistant-card {
       background: rgba(255,255,255,0.12);
       backdrop-filter: blur(10px);
@@ -278,7 +269,6 @@
       overflow-y: auto;
     }
 
-    /* Responsive */
     @media (max-width: 768px) {
       .grid { grid-template-columns: 1fr; }
       .status-bar { justify-content: center; }
@@ -294,7 +284,7 @@
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
       <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products, create ad for Basmati Rice, boost sales of Wireless Earbuds)" />
-      <button class="send-btn" onclick="sendCommand()">Send</button>
+      <button class="send-btn" id="sendBtn">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
 
@@ -333,16 +323,16 @@
   </div>
 
   <script>
-    // ========== CONFIG - APNI KEYS YAHAN DALEN ==========
+    // ========== CONFIG ==========
     const SUPABASE_URL = "https://uipkgqqfahtdaevxwfef.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcGtncXFmYWh0ZGFldnh3ZmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTAxNjIsImV4cCI6MjEwMTQyNjE2Mn0.i-4rx4fHHdruL8DCiwI2G2Duqfv0QO31xowPLsr4V8Y";
     const MASTER_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/master-agent";
-    const ASSISTANT_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";  // <-- नया Assistant Agent
-    // =====================================================
+    const ASSISTANT_AGENT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
+    // =================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // --- Existing functions ---
+    // Load chat messages
     async function loadChat() {
       const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
       if (data) {
@@ -355,6 +345,7 @@
       }
     }
 
+    // Load orders
     async function loadOrders() {
       const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
       if (data) {
@@ -371,6 +362,7 @@
       }
     }
 
+    // Load approvals
     async function loadApprovals() {
       const { data } = await supabase.from("approvals").select("*").eq("status", "pending");
       if (data && data.length > 0) {
@@ -417,8 +409,8 @@
       document.getElementById("todayMsgs").innerText = data?.length || 0;
     }
 
-    // --- NEW: Assistant send command function ---
-    async function sendCommand() {
+    // ---------- Assistant बटन (बिना onclick, event listener से) ----------
+    document.getElementById("sendBtn").addEventListener("click", async function() {
       const cmd = document.getElementById("commandInput").value.trim();
       if (!cmd) return;
       document.getElementById("assistantResponse").innerHTML = "🧠 Processing...";
@@ -429,16 +421,14 @@
           body: JSON.stringify({ command: cmd })
         });
         const data = await res.json();
-        // Format nicely
         document.getElementById("assistantResponse").innerHTML = "<pre style='white-space:pre-wrap; color:#ccc;'>" + JSON.stringify(data, null, 2) + "</pre>";
-        // Also refresh chat to see agent messages
         setTimeout(loadChat, 500);
         setTimeout(loadOrders, 500);
         setTimeout(loadApprovals, 500);
       } catch (e) {
         document.getElementById("assistantResponse").innerHTML = "❌ Error: " + e.message;
       }
-    }
+    });
 
     // Real-time subscriptions
     supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
