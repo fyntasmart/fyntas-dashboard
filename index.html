@@ -83,7 +83,7 @@
     <!-- AI Assistant Section -->
     <div class="assistant-card">
       <h2>💡 AI Assistant</h2>
-      <input type="text" class="command-input" id="commandInput" placeholder="Type command...">
+      <input type="text" class="command-input" id="commandInput" placeholder="Type command... (e.g. find trending products)">
       <button class="send-btn" onclick="sendToAI()">Send</button>
       <div class="assistant-response" id="assistantResponse">Your results will appear here...</div>
     </div>
@@ -122,7 +122,7 @@
     </div>
   </div>
 
-  <!-- ========== स्क्रिप्ट 1: असिस्टेंट ========== -->
+  <!-- ========== स्क्रिप्ट 1: असिस्टेंट (सभी कमांड को सही पहचानेगा और सुंदर दिखाएगा) ========== -->
   <script>
     (function() {
       const ASSISTANT_URL = "https://uipkgqqfahtdaevxwfef.supabase.co/functions/v1/assistant-agent";
@@ -141,10 +141,20 @@
         .then(function(data) {
           var responseBox = document.getElementById("assistantResponse");
           
+          // --- अगर create_ad / social_post के results खाली हैं तो साफ़ संदेश दिखाएँ ---
+          if (data.action === "create_ad" && (!data.results || data.results.length === 0)) {
+            responseBox.innerHTML = "<h3 style='color:#fcb045;'>⚠️ No Ad Creative Generated</h3><p>Please provide a specific product, e.g. <em>'create ad for Wireless Earbuds'</em>.</p>";
+            return;
+          }
+          if (data.action === "social_post" && (!data.results || data.results.length === 0)) {
+            responseBox.innerHTML = "<h3 style='color:#fcb045;'>⚠️ No Social Post Generated</h3><p>Please provide a specific product, e.g. <em>'Instagram post for Kurti'</em>.</p>";
+            return;
+          }
+          
           // 1. Trending
           if (data.action === "trending" && data.results && data.results[0] && data.results[0].result && data.results[0].result.trends) {
             var trends = data.results[0].result.trends;
-            var html = "<h3 style='color:#fcb045;'>🔥 Trending Products in India</h3><ul style='list-style-type:none; padding-left:0;'>";
+            var html = "<h3 style='color:#fcb045; margin-bottom:10px;'>🔥 Trending Products in India</h3><ul style='list-style-type:none; padding-left:0;'>";
             for (var i = 0; i < trends.length; i++) {
               html += "<li style='padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);'>" + trends[i].keyword + "</li>";
             }
@@ -197,7 +207,7 @@
     })();
   </script>
 
-  <!-- ========== स्क्रिप्ट 2: डैशबोर्ड ========== -->
+  <!-- ========== स्क्रिप्ट 2: डैशबोर्ड (Supabase + बाकी सब) ========== -->
   <script>
     (function() {
       try {
@@ -291,8 +301,10 @@
         loadOrders();
         loadApprovals();
         countToday();
+
+        console.log("✅ Full dashboard loaded – Assistant is independent.");
       } catch(e) {
-        console.error("Dashboard script error:", e);
+        console.error("Dashboard script error (Assistant unaffected):", e);
       }
     })();
   </script>
