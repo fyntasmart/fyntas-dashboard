@@ -109,6 +109,10 @@
           <h2>⏳ Pending Approvals</h2>
           <div id="approvalBox">No pending approvals</div>
         </div>
+        <div class="card" style="margin-bottom:20px;">
+          <h2>🔄 Agent Transfer Requests</h2>
+          <div id="transferBox">No pending requests</div>
+        </div>
         <div class="card">
           <h2>📦 Recent Orders</h2>
           <div style="overflow-x:auto;">
@@ -224,7 +228,7 @@
           else if (data.action === "sales_boost_missing_product" && data.message) {
             responseBox.innerHTML = "<h3 style='color:#fcb045;'>⚠️ Missing Product</h3><p>" + data.message + "</p>";
           }
-          // 7. Order / Courier / Full Report (simplified)
+          // 7. Order / Courier / Full Report
           else if (data.action === "order_report" || data.action === "courier_report" || data.action === "full_report") {
             var html = "<h3 style='color:#fcb045;'>📋 Report</h3>";
             if (data.results && data.results.length > 0) {
@@ -320,6 +324,28 @@
           }
         }
 
+        // ---- Transfer Requests ----
+        async function loadTransfers() {
+          const { data } = await supabase.from("messages").select("*")
+            .eq("message_type", "alert")
+            .eq("from_agent", "whatsapp")
+            .eq("to_agent", "master")
+            .order("created_at", { ascending: false })
+            .limit(10);
+          if (data && data.length > 0) {
+            document.getElementById("transferBox").innerHTML = data.map(m => {
+              const payload = JSON.parse(m.content);
+              return `<div style="background:#2d1a1a; border:1px solid #ff5252; padding:10px; margin:10px 0; border-radius:8px;">
+                <strong>📞 ${payload.customer}</strong><br>
+                <span>💬 ${payload.query}</span><br>
+                <small>🕒 ${new Date(m.created_at).toLocaleTimeString('en-IN')}</small>
+              </div>`;
+            }).join("");
+          } else {
+            document.getElementById("transferBox").innerHTML = "No pending requests";
+          }
+        }
+
         window.approve = async function(id) {
           await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
           loadApprovals();
@@ -349,13 +375,16 @@
           document.getElementById("todayMsgs").innerText = data?.length || 0;
         }
 
-        supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, loadChat).subscribe();
+        // Real-time subscriptions
+        supabase.channel("live").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "message_type=neq.alert" }, loadChat).subscribe();
         supabase.channel("orders-live").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
         supabase.channel("approvals-live").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, loadApprovals).subscribe();
+        supabase.channel("transfers").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "message_type=eq.alert" }, loadTransfers).subscribe();
 
         loadChat();
         loadOrders();
         loadApprovals();
+        loadTransfers();
         countToday();
       } catch(e) {
         console.error("Dashboard script error:", e);
